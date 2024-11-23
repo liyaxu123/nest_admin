@@ -8,12 +8,22 @@ import {
   Delete,
   Query,
   Inject,
+  Res,
+  Req,
+  Ip,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { EmailService } from 'src/email/email.service';
 import { RedisService } from 'src/redis/redis.service';
+import { LoginUserDto } from './dto/login-user.dto';
+import * as svgCaptcha from 'svg-captcha';
+import { ConfigEnum } from 'src/enums/config.enum';
+import { JwtService } from '@nestjs/jwt';
+import { UserInfo } from './vo/login-user.vo';
+import { ConfigService } from '@nestjs/config';
 
 @Controller('user')
 export class UserController {
@@ -22,6 +32,12 @@ export class UserController {
 
   @Inject(RedisService)
   private redisService: RedisService;
+
+  @Inject(JwtService)
+  private jwtService: JwtService;
+
+  @Inject(ConfigService)
+  private configService: ConfigService;
 
   constructor(private readonly userService: UserService) {}
 
@@ -47,6 +63,50 @@ export class UserController {
     return this.userService.create(createUserDto);
   }
 
+  @Get('captchaImage')
+  async captchaImage(@Req() req, @Res() res) {
+    const captcha = svgCaptcha.create({
+      size: 4, // 验证码长度
+      fontSize: 50, // 文字大小
+      width: 100, // 宽度
+      height: 34, // 高度
+      background: '#cc9966', // 背景颜色
+      ignoreChars: '0o1i', // 验证码字符中排除 0o1i
+      noise: 4, // 干扰线条的数量
+    });
+    console.log(captcha.text);
+
+    // 存储验证码到 redis, 5 分钟过期
+    await this.redisService.set('captcha_login', captcha.text, 5 * 60);
+
+    res.type('image/svg+xml');
+    res.send(captcha.data);
+  }
+
+  @Post('login')
+  async userLogin(@Body() loginUser: LoginUserDto, @Ip() ip: string) {
+    const vo = await this.userService.login(loginUser, ip);
+    const { access_token, refresh_token } = this.generateToken(vo.userInfo);
+    vo.accessToken = access_token;
+    vo.refreshToken = refresh_token;
+    return vo;
+  }
+
+  @Get('refresh')
+  async refreshToken(@Query('refreshToken') refreshToken: string) {
+    try {
+      const data = this.jwtService.verify(refreshToken);
+      const user = await this.userService.findUserById(data.userId);
+      const { access_token, refresh_token } = this.generateToken(user);
+      return {
+        access_token,
+        refresh_token,
+      };
+    } catch (e) {
+      throw new UnauthorizedException('token 已失效，请重新登录', e);
+    }
+  }
+
   @Get()
   findAll() {
     return this.userService.findAll();
@@ -65,5 +125,34 @@ export class UserController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.userService.remove(+id);
+  }
+
+  // 生成token
+  generateToken(user: UserInfo) {
+    const access_token = this.jwtService.sign(
+      {
+        userId: user.id,
+        username: user.username,
+      },
+      {
+        expiresIn:
+          this.configService.get(ConfigEnum.JWT_ACCESS_TOKEN_EXPIRES_TIME) ||
+          '30m',
+      },
+    );
+    const refresh_token = this.jwtService.sign(
+      {
+        userId: user.id,
+      },
+      {
+        expiresIn:
+          this.configService.get(ConfigEnum.JWT_REFRESH_TOKEN_EXPIRES_TIME) ||
+          '7d',
+      },
+    );
+    return {
+      access_token,
+      refresh_token,
+    };
   }
 }

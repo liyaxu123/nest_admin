@@ -23,7 +23,6 @@ export class User {
   })
   username: string;
 
-  @Exclude({ toPlainOnly: true }) // 输出屏蔽密码
   @Column({
     type: 'varchar',
     length: 200,

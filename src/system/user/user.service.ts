@@ -6,6 +6,8 @@ import { User } from './entities/user.entity';
 import { md5 } from 'src/utils';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
+import { LoginUserDto } from './dto/login-user.dto';
+import { LoginUserVo } from './vo/login-user.vo';
 
 @Injectable()
 export class UserService {
@@ -54,12 +56,106 @@ export class UserService {
     }
   }
 
+  /**
+   * 用户登录
+   * @param loginUser
+   */
+  async login(loginUser: LoginUserDto, ip: string): Promise<LoginUserVo> {
+    const captcha = await this.redisService.get('captcha_login');
+    if (!captcha) {
+      throw new HttpException('验证码已失效', HttpStatus.BAD_REQUEST);
+    }
+
+    if (loginUser.captcha !== captcha) {
+      throw new HttpException('验证码不正确', HttpStatus.BAD_REQUEST);
+    }
+
+    const foundUser = await this.userRepository.findOneBy({
+      username: loginUser.username,
+    });
+
+    if (!foundUser) {
+      throw new HttpException('用户不存在', HttpStatus.BAD_REQUEST);
+    }
+
+    if (foundUser.password !== md5(loginUser.password)) {
+      throw new HttpException('密码错误', HttpStatus.BAD_REQUEST);
+    }
+
+    // 更新用户的登录时间和登录IP
+    const loginDate = new Date();
+    await this.userRepository.update(
+      {
+        id: foundUser.id,
+      },
+      {
+        loginDate: loginDate,
+        loginIp: ip,
+      },
+    );
+
+    const vo = new LoginUserVo();
+    vo.userInfo = {
+      id: foundUser.id,
+      username: foundUser.username,
+      nickName: foundUser.nickName,
+      userType: foundUser.userType,
+      email: foundUser.email,
+      phonenumber: foundUser.phonenumber,
+      sex: foundUser.sex,
+      avatar: foundUser.avatar,
+      loginIp: ip,
+      loginDate: loginDate.getTime(),
+      createTime: foundUser.createTime.getTime(),
+      updateTime: foundUser.updateTime.getTime(),
+    };
+
+    return vo;
+  }
+
   findAll() {
     return `This action returns all user`;
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} user`;
+  /**
+   * 通过 id 查询用户信息
+   * @param userId
+   */
+  async findUserById(userId: number) {
+    const foundUser = await this.userRepository.findOne({
+      where: {
+        id: userId,
+      },
+    });
+
+    if (!foundUser) {
+      throw new HttpException('用户不存在', HttpStatus.BAD_REQUEST);
+    }
+
+    return {
+      id: foundUser.id,
+      username: foundUser.username,
+      nickName: foundUser.nickName,
+      userType: foundUser.userType,
+      email: foundUser.email,
+      phonenumber: foundUser.phonenumber,
+      sex: foundUser.sex,
+      avatar: foundUser.avatar,
+      loginIp: foundUser.loginIp,
+      loginDate: foundUser.loginDate.getTime(),
+      createTime: foundUser.createTime.getTime(),
+      updateTime: foundUser.updateTime.getTime(),
+    };
+  }
+
+  async findOne(id: number) {
+    const user = await this.userRepository.findOne({
+      where: {
+        id,
+      },
+    });
+
+    return user;
   }
 
   update(id: number, updateUserDto: UpdateUserDto) {
