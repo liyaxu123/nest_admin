@@ -4,6 +4,10 @@ import { AppService } from './app.service';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ConfigEnum } from './enums/config.enum';
+import { UserModule } from './system/user/user.module';
+import { User } from './system/user/entities/user.entity';
+import { RedisModule } from './redis/redis.module';
+import { EmailModule } from './email/email.module';
 
 @Module({
   imports: [
@@ -19,18 +23,18 @@ import { ConfigEnum } from './enums/config.enum';
           username: configService.get(ConfigEnum.MYSQL_USERNAME),
           password: configService.get(ConfigEnum.MYSQL_PASSWORD),
           database: configService.get(ConfigEnum.MYSQL_DATABASE),
-          entities: [],
+          entities: [User],
           synchronize: true,
           logging: true,
           poolSize: 10,
           connectorPackage: 'mysql2',
-          extra: {
-            authPlugins: 'sha256_password',
-          },
         } as TypeOrmModuleOptions;
       },
       inject: [ConfigService],
     }),
+    UserModule,
+    RedisModule,
+    EmailModule,
   ],
   controllers: [AppController],
   providers: [AppService],
