@@ -11,6 +11,10 @@ import { JwtModule } from '@nestjs/jwt';
 import { APP_GUARD } from '@nestjs/core';
 import { LoginGuard } from './guards/login.guard';
 import { PermissionGuard } from './guards/permission.guard';
+import { RoleModule } from './system/role/role.module';
+import { MenuModule } from './system/menu/menu.module';
+import { Role } from './system/role/entities/role.entity';
+import { Menu } from './system/menu/entities/menu.entity';
 
 @Module({
   imports: [
@@ -26,7 +30,7 @@ import { PermissionGuard } from './guards/permission.guard';
           username: configService.get(ConfigEnum.MYSQL_USERNAME),
           password: configService.get(ConfigEnum.MYSQL_PASSWORD),
           database: configService.get(ConfigEnum.MYSQL_DATABASE),
-          entities: [User],
+          entities: [User, Role, Menu],
           synchronize: true,
           logging: true,
           poolSize: 10,
@@ -50,6 +54,8 @@ import { PermissionGuard } from './guards/permission.guard';
     UserModule,
     RedisModule,
     EmailModule,
+    RoleModule,
+    MenuModule,
   ],
   controllers: [AppController],
   providers: [

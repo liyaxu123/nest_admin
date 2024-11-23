@@ -1,8 +1,10 @@
-import { Exclude } from 'class-transformer';
+import { Role } from 'src/system/role/entities/role.entity';
 import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinTable,
+  ManyToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -92,4 +94,10 @@ export class User {
 
   @UpdateDateColumn({ comment: '更新时间' })
   updateTime: Date;
+
+  @ManyToMany(() => Role)
+  @JoinTable({
+    name: 'sys_user_roles',
+  })
+  roles: Role[];
 }
