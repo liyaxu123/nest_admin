@@ -133,6 +133,8 @@ export class UserController {
       {
         userId: user.id,
         username: user.username,
+        roles: user.roles,
+        menus: user.menus,
       },
       {
         expiresIn:

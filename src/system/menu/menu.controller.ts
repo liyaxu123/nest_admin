@@ -10,19 +10,19 @@ import {
 import { MenuService } from './menu.service';
 import { CreateMenuDto } from './dto/create-menu.dto';
 import { UpdateMenuDto } from './dto/update-menu.dto';
-import { RequireLogin } from 'src/custom.decorator';
+import { RequirePermission } from 'src/custom.decorator';
 
 @Controller('menu')
 export class MenuController {
   constructor(private readonly menuService: MenuService) {}
 
   @Post('create')
-  @RequireLogin()
   create(@Body() createMenuDto: CreateMenuDto) {
     return this.menuService.create(createMenuDto);
   }
 
   @Get()
+  @RequirePermission('system:menu:list')
   findAll() {
     return this.menuService.findAll();
   }

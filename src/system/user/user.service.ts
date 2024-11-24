@@ -66,12 +66,16 @@ export class UserService {
       throw new HttpException('验证码已失效', HttpStatus.BAD_REQUEST);
     }
 
-    if (loginUser.captcha !== captcha) {
+    if (loginUser.captcha.toUpperCase() !== captcha.toUpperCase()) {
       throw new HttpException('验证码不正确', HttpStatus.BAD_REQUEST);
     }
 
-    const foundUser = await this.userRepository.findOneBy({
-      username: loginUser.username,
+    const foundUser = await this.userRepository.findOne({
+      where: {
+        username: loginUser.username,
+      },
+      // 关联查询出用户对应的角色和角色对应的菜单
+      relations: ['roles', 'roles.menus'],
     });
 
     if (!foundUser) {
@@ -108,6 +112,15 @@ export class UserService {
       loginDate: loginDate.getTime(),
       createTime: foundUser.createTime.getTime(),
       updateTime: foundUser.updateTime.getTime(),
+      roles: foundUser.roles.map((item) => item.roleName),
+      menus: foundUser.roles.reduce((arr, item) => {
+        item.menus.forEach((permission) => {
+          if (arr.indexOf(permission) === -1) {
+            arr.push(permission);
+          }
+        });
+        return arr;
+      }, []),
     };
 
     return vo;
@@ -145,6 +158,16 @@ export class UserService {
       loginDate: foundUser.loginDate.getTime(),
       createTime: foundUser.createTime.getTime(),
       updateTime: foundUser.updateTime.getTime(),
+      roles: foundUser.roles.map((item) => item.roleName),
+      // 角色之间可能会有重叠的菜单权限，所以需要去重
+      menus: foundUser.roles.reduce((arr, item) => {
+        item.menus.forEach((permission) => {
+          if (arr.indexOf(permission) === -1) {
+            arr.push(permission);
+          }
+        });
+        return arr;
+      }, []),
     };
   }
 

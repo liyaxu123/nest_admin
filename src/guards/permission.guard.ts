@@ -21,17 +21,18 @@ export class PermissionGuard implements CanActivate {
     if (!request.user) {
       return true;
     }
-    const permissions = request.user.permissions;
+    const menus = request.user.menus;
     const requiredPermissions = this.reflector.getAllAndOverride<string[]>(
       'require-permission',
       [context.getClass(), context.getHandler()],
     );
+
     if (!requiredPermissions) {
       return true;
     }
     for (let i = 0; i < requiredPermissions.length; i++) {
       const curPermission = requiredPermissions[i];
-      const found = permissions.find((item) => item.code === curPermission);
+      const found = menus.find((item) => item.perms === curPermission);
       if (!found) {
         throw new UnauthorizedException('您没有访问该接口的权限');
       }

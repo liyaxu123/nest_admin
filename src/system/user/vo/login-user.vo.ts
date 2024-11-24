@@ -11,6 +11,8 @@ export interface UserInfo {
   loginDate: number;
   createTime: number;
   updateTime: number;
+  roles: string[];
+  menus: string[];
 }
 
 export class LoginUserVo {
