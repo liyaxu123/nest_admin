@@ -12,6 +12,7 @@ import { pathToRegexp } from 'path-to-regexp';
 import { Observable } from 'rxjs';
 import { UnLoginException } from 'src/filters/unlogin.filter';
 import { Menu } from 'src/system/menu/entities/menu.entity';
+import { URL } from 'url';
 
 interface JwtUserData {
   userId: number;
@@ -104,12 +105,14 @@ export class LoginGuard implements CanActivate {
         !route.method ||
         req.method.toUpperCase() === route.method.toUpperCase()
       ) {
+        // 使用 URL 类解析请求 URL
+        const { pathname } = new URL(req.url, `http://${req.headers.host}`);
         const { regexp } = pathToRegexp(route.path) as {
           regexp: RegExp;
           keys: any[];
         };
         // 对比 url
-        return !!regexp.exec(req.url);
+        return !!regexp.exec(pathname);
       }
       return false;
     });
